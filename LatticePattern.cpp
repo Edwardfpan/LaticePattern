@@ -1,143 +1,146 @@
 // Edward Pan, edwardfpan@yahoo.com, Feb 1, 2016
-// For XXX Inc. 
+
 // Rev 2, Feb 5, 2016
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+using namespace std;
+#include <iostream>
+#include <fstream>
 #include "LatticePattern.h"
 #define Print2File
-#define PrintPattern
 
-int NoOfP_o, NoOfP_n;
-static int SqSize_n, SqSize_o;
 bool PrintOut=false;
-Lattice_LL *Lattice_n, *Lattice_o, *Lattice_ot,  *Lattice_nt;
-FILE *fp;
-extern int LatticeSize;
+ofstream oft;
 
-int LatticePattern(int N)
+Clattice_List::Clattice_List()
+{
+	LattPtr Lattice_n = NULL;
+	Lattice_o = NULL;
+	Lattice_ot = NULL;
+	Lattice_nt = NULL;
+};
+Clattice_List::~Clattice_List()
+{
+};
+
+int Clattice_List::get_NoOfPattern()
+{
+	return NoOfPattern;
+};
+
+int Clattice_List::LatticeGeneration(int SquareSize)
 {
 	int n, i, j;
+	static int SqSize_n, SqSize_o;
+	BYTE **Pattern_o;
 
-	BYTE **Buffer_o;
-
+	PrintOut=false;
 
 //	strcatfilename, (char)
 #ifdef Print2File
-	char filename[80], buff[80];
+	char filename[80], filename1[80], buff[80];
 	strcpy(filename,"Lattice_");
-	sprintf(buff, "%d",LatticeSize);
+	sprintf(buff, "%d",SquareSize);
 	strcat(filename,buff);
 	strcat(filename,".txt");
-	fp = fopen(filename, "w");
-	if (NULL == fp)
+	
+	oft.open(filename);
+	if (NULL == oft)
 	{
-		printf("Can't open file %s\n",filename);
+		cout << "Can't open file << filename" << endl; ;
 		exit(-1);
 	}
 #endif
 
-	for (n=1; n<=N; n++)
+	for (n=1; n<=SquareSize; n++)
 	{
+		if (n == SquareSize)
+			PrintOut = true;		
+		
 		if (n ==1)
 		{
-
-			NoOfP_n = 1;
+			NoOfPattern = 1;
 			SqSize_n = 1;
 			SqSize_o = 1;
-			BYTE **Latt;
+			BYTE **NewPatt;
 
-			Latt = Memory2D(SqSize_n);
-			Latt[0][0] = 1;
+			NewPatt = Memory2D(SqSize_n);
+			NewPatt[0][0] = 1;
 
-			Lattice_n = Lattice_Create(Latt, SqSize_n);
-			Lattice_Copy(&Lattice_o, Lattice_n, SqSize_n);
+			Lattice_n = Lattice_Create(NewPatt, SqSize_n);
+			Lattice_Copy(&Lattice_o, Lattice_n);
 
-			if (n == N) // printf out
+			if (PrintOut) // printf out
 			{
-//				printf("Lattice Pattern 1: \n#\n");
-				printf("\n#\n");
+				cout << endl << "#" << endl;
 #ifdef Print2File
-				fprintf(fp,"Lattice Pattern 1: \n#\n");
+				oft << "Lattice Pattern 1: " << endl << "#" << endl;
 #endif
 			}
-
 		}
 		else // n >1
 		{
+			cout << "Calculating" << n << "x" << n << "pattern..." << endl;
 			SqSize_n = Lattice_o->SqSize + 1;
-			NoOfP_n = 0;
+			NoOfPattern = 0;
 
-			// Buffer memory allocation
-
-			Buffer_o = Memory2D(Lattice_o->SqSize);
-
+			// Pattern memory allocation
+			Pattern_o = Memory2D(Lattice_o->SqSize);
 			Lattice_ot = Lattice_o;
-
 			while ( NULL != Lattice_ot)
 			{
-				if (n == N)
-					PrintOut = true;
-
 
 				for (i=0; i<Lattice_o->SqSize; i++)
 					for (j=0; j<Lattice_o->SqSize; j++)
 					{
-						Buffer_o[i][j] = Lattice_ot->Lattice[i][j];
+						Pattern_o[i][j] = Lattice_ot->Pattern[i][j];
 					}
-
-				LatticeGrow(Buffer_o, Lattice_o->SqSize);
-
+				LatticeGrow(Pattern_o, Lattice_o->SqSize);
 				Lattice_ot = Lattice_ot->next;
 			} 
 
-			// free Buffer memory
+			// free Pattern memory
 			for (i=0; i<SqSize_o; i++)
 			{
-				free(Buffer_o[i]);
+				delete Pattern_o[i];
 			}
-			free(Buffer_o);
+			delete Pattern_o;
 		}  
 
 		// delete old
-		Lattice_Delete(Lattice_o, Lattice_o->SqSize);
+		Lattice_Delete(Lattice_o);
 		// old = new;
-		Lattice_Copy(&Lattice_o, Lattice_n, Lattice_n->SqSize); //Size is new size
+		Lattice_Copy(&Lattice_o, Lattice_n); //Size is new size
 	} 
 
 #ifdef Print2File
-	fclose(fp);
+	oft << "\nThe total number of blocks for Square " << Lattice_o->SqSize << "x" << Lattice_o->SqSize << " is " << get_NoOfPattern() << endl;
+	oft.close();
 #endif
 	// delete new
-	Lattice_Delete(Lattice_n, Lattice_n->SqSize);
-
+	Lattice_Delete(Lattice_n);
 	return 0;
 }
 
-
-void LatticeGrow(BYTE **Buffer_o, int SqSize_o)
+void Clattice_List::LatticeGrow(BYTE **Pattern_o, int SqSize_o)
 {
 	int ii, jj;
 	int i,j;
-
 	int SqSize_n = SqSize_o +1;
-	BYTE **NewLatt;
-	BYTE **Buffer_n;
-	NewLatt=Memory2D(SqSize_n);
-	Buffer_n=Memory2D(SqSize_n);
-
+	BYTE **NewPatt;
+	BYTE **Pattern_n;
+	NewPatt=Memory2D(SqSize_n);
+	Pattern_n=Memory2D(SqSize_n);
 
 	// grow at bottom right
 	for (i=0; i<SqSize_n; i++)
 		for (j=0; j<SqSize_n; j++)
 		{
-			Buffer_n[i][j] = 0;
+			Pattern_n[i][j] = 0;
 		}
 	for (i=0; i<SqSize_o; i++)
 		for (j=0; j<SqSize_o; j++)
 		{
-			Buffer_n[i][j] = Buffer_o[i][j];
+			Pattern_n[i][j] = Pattern_o[i][j];
 		}
 
 	for (ii=0; ii<SqSize_n; ii++)
@@ -148,20 +151,15 @@ void LatticeGrow(BYTE **Buffer_o, int SqSize_o)
 			{
 				for (int j1=0; j1<SqSize_n; j1++)
 				{
-					NewLatt[i1][j1] = Buffer_n[i1][j1];
+					NewPatt[i1][j1] = Pattern_n[i1][j1];
 				}
 			}
-
-			if (NewLatt[ii][jj] == 0)
+			if (NewPatt[ii][jj] == 0)
 			{
-				if (CheckingNeighbors(NewLatt, ii, jj, SqSize_n))
+				if (CheckingNeighbors(NewPatt, ii, jj, SqSize_n))
 				{
-					NewLatt[ii][jj] = 1;
-					if (!CheckNewLatt(NewLatt, SqSize_n))
-					{
-						continue;
-						// delete NewLatt;
-					}
+					NewPatt[ii][jj] = 1;
+					CheckNewPattern(NewPatt, SqSize_n);
 				}
 			}
 		}
@@ -170,12 +168,12 @@ void LatticeGrow(BYTE **Buffer_o, int SqSize_o)
 	for (i=0; i<SqSize_n; i++)
 		for (j=0; j<SqSize_n; j++)
 		{
-			Buffer_n[i][j] = 0;
+			Pattern_n[i][j] = 0;
 		}
 	for (i=0; i<SqSize_o; i++)
 		for (j=0; j<SqSize_o; j++)
 		{
-			Buffer_n[i+1][j+1] = Buffer_o[i][j];  // old to be at bottom
+			Pattern_n[i+1][j+1] = Pattern_o[i][j];  // old to be at bottom
 		}
 
 //	for (ii=0; ii<SqSize_n; ii++)
@@ -187,24 +185,19 @@ void LatticeGrow(BYTE **Buffer_o, int SqSize_o)
 			{
 				for (int j1=0; j1<SqSize_n; j1++)
 				{
-					NewLatt[i1][j1] = Buffer_n[i1][j1];
+					NewPatt[i1][j1] = Pattern_n[i1][j1];
 				}
 			}
 
-			if (NewLatt[ii][jj] == 0)
+			if (NewPatt[ii][jj] == 0)
 			{
-				if (CheckingNeighbors(NewLatt, ii, jj, SqSize_n))
+				if (CheckingNeighbors(NewPatt, ii, jj, SqSize_n))
 				{
-					NewLatt[ii][jj] = 1;
+					NewPatt[ii][jj] = 1;
 
 					// This time, need to move the pattern to top left if possible.
-					Move2TopLeft(NewLatt, SqSize_n);
-					/////////////////////////////////////////////////////////////
-					if (!CheckNewLatt(NewLatt, SqSize_n))
-					{
-						continue;
-						// delete NewLatt;
-					}
+					Move2TopLeft(NewPatt, SqSize_n);
+					CheckNewPattern(NewPatt, SqSize_n);
 				}
 			}
 		}
@@ -218,124 +211,108 @@ void LatticeGrow(BYTE **Buffer_o, int SqSize_o)
 			{
 				for (int j1=0; j1<SqSize_n; j1++)
 				{
-					NewLatt[i1][j1] = Buffer_n[i1][j1];
+					NewPatt[i1][j1] = Pattern_n[i1][j1];
 				}
 			}
 
-			if (NewLatt[ii][jj] == 0)
+			if (NewPatt[ii][jj] == 0)
 			{
-				if (CheckingNeighbors(NewLatt, ii, jj, SqSize_n))
+				if (CheckingNeighbors(NewPatt, ii, jj, SqSize_n))
 				{
-					NewLatt[ii][jj] = 1;
+					NewPatt[ii][jj] = 1;
 
 					// This time, need to move the pattern to top left if possible.
-					Move2TopLeft(NewLatt, SqSize_n);
-
-					if (!CheckNewLatt(NewLatt, SqSize_n))
-					{
-						continue;
-						// delete NewLatt;
-					}
+					Move2TopLeft(NewPatt, SqSize_n);
+					CheckNewPattern(NewPatt, SqSize_n);
 				}
 			}
 		}
 
 		for (int m=0; m<SqSize_n; m++)
 		{
-			free(Buffer_n[m]);
-			free(NewLatt[m]);
+			delete Pattern_n[m];
+			delete NewPatt[m];
 		}
-		free(Buffer_n);
-		free(NewLatt);
+		delete Pattern_n;
+		delete NewPatt;
 }
 
 
-bool CheckNewLatt(BYTE **Buffer, int SqSize)
+bool Clattice_List::CheckNewPattern(BYTE **Pattern, int SqSize)
 {
 	int i, j;
-	Lattice_LL *Lattice_nt;
+	LattPtr Lattice_nt;
 	bool success = false;
 	bool addition = false;
 
-	if (NoOfP_n==0)
+	if (NoOfPattern==0)
 	{
 		// Adding new Lattice
 		if (NULL !=Lattice_n)
 		{
-			Lattice_Delete(Lattice_n, Lattice_n->SqSize);
+			Lattice_Delete(Lattice_n);
 			Lattice_n = NULL;
 		}
 
-		BYTE **Latt_NEW;
-		Latt_NEW = Memory2D(SqSize);
+		BYTE **NewPatt;
+		NewPatt = Memory2D(SqSize);
 		for (i=0; i<SqSize; i++)
 		{
 			for (j=0; j<SqSize; j++)
 			{
-				Latt_NEW[i][j]=Buffer[i][j];
+				NewPatt[i][j]=Pattern[i][j];
 			}
 		}
 
-		Lattice_n = Lattice_Create(Latt_NEW, SqSize);	
-
-
+		Lattice_n = Lattice_Create(NewPatt, SqSize);	
 		if (PrintOut) 
 		{
-#ifdef PrintPattern
 #ifdef Print2File
-			fprintf(fp, "Lattice Pattern %d: \n", NoOfP_n+1);
+			oft << "Lattice Pattern " << NoOfPattern+1 << ": " << endl;
 #endif
-//			printf("Lattice Pattern %d: \n", NoOfP_n+1);
+//			printf("Lattice Pattern %d: \n", NoOfPattern+1);
 			for (i=0; i<SqSize; i++)
 			{
 				for (j=0; j<SqSize; j++)
 				{
-					if (Lattice_n->Lattice[i][j]==1)
+					if (Lattice_n->Pattern[i][j]==1)
 					{
-						printf("#");
+						cout << "#";
 #ifdef Print2File
-						fprintf(fp,"#");
+						oft << "#" ;
 #endif
 					}
 					else
 					{
-						printf(" ");
+						cout << " ";
+#ifdef Print2File
+						oft << "" ;
+#endif
 					}
 				}
-				printf("\n");
+				cout << endl;
 #ifdef Print2File
-				fprintf(fp, "\n");
+				oft << endl ;
 #endif
 			}
-#else
-			for (i=0; i<SqSize; i++)
-			{
-				for (j=0; j<SqSize; j++)
-				{
-						printf("%d ", Lattice_n->Lattice[i][j]);
-				}
-				printf("\n");
-			}
-#endif
-		}
 
-		NoOfP_n++;
+		}
+		NoOfPattern++;
 		success = true;
 	}
-	else // NoOfP_n > 0
+	else // NoOfPattern > 0
 	{
 		Lattice_nt = Lattice_n;
 
 		// Check if the Lattice is already there
 		int Node_cnt = 0;
 		addition = true;
-		while (NULL !=Lattice_nt) // parsing all the nodes in the list
+		while (NULL !=Lattice_nt) // parsing all the Lattices in the list
 		{
-			if (LatticeCompare(Lattice_nt->Lattice, Lattice_nt->Size_h, Lattice_nt->Size_v, Buffer, SqSize))
+			if (IsPatternInList(Lattice_nt->Pattern, Lattice_nt->Size_h, Lattice_nt->Size_v, Pattern, SqSize))
 			{
 				addition = false;
 			}
-
 			Lattice_nt = Lattice_nt->next;
 			Node_cnt++;
 		}
@@ -343,92 +320,77 @@ bool CheckNewLatt(BYTE **Buffer, int SqSize)
 		if (addition)
 		{
 			// Adding new Lattice
-			BYTE **Latt_NEW;
-			Latt_NEW = Memory2D(SqSize);
+			BYTE **NewPatt;
+			NewPatt = Memory2D(SqSize);
 			for (i=0; i<SqSize; i++)
 			{
 				for (j=0; j<SqSize; j++)
 				{
-					Latt_NEW[i][j]=Buffer[i][j];
+					NewPatt[i][j]=Pattern[i][j];
 				}
 			}
-			Lattice_Add(Lattice_n, SqSize, Latt_NEW);	
+			Lattice_Add(Lattice_n, NewPatt);	
 			if (PrintOut)
 			{
-#ifdef PrintPattern
-
-//				printf("Lattice Pattern %d: \n", NoOfP_n+1);
 #ifdef Print2File
-				fprintf(fp,"Lattice Pattern %d: \n", NoOfP_n+1);
+				oft << "Lattice Pattern " << NoOfPattern+1 << ": " << endl;
 #endif
 				for (i=0; i<SqSize; i++)
 				{
 					for (j=0; j<SqSize; j++)
 					{
-						if (Latt_NEW[i][j]==1)
+						if (NewPatt[i][j]==1)
 						{
-							printf("#");
+							cout << "#";
 #ifdef Print2File
-							fprintf(fp,"#");
+							oft << "#" ;
 #endif
 						}
 						else
 						{
-							printf(" ");
+							cout << " ";
 #ifdef Print2File
-							fprintf(fp," ");
+							oft << " " ;
 #endif
 						}
 					}
-					printf("\n");
+					cout << "\n";
 #ifdef Print2File
-					fprintf(fp,"\n");
+					oft << endl ;
 #endif
 				}
-#else
-				for (i=0; i<SqSize; i++)
-				{
-					for (j=0; j<SqSize; j++)
-					{
-							printf("%d ", Latt_NEW[i][j]);
-					}
-					printf("\n");
-				}
-#endif
-
 			}
 
-			NoOfP_n++;
+			NoOfPattern++;
 			success = true;
 		}
-
 	}
 
 	return success;
 };
 
 
-bool CheckingNeighbors(BYTE **Buffer, int i, int j, int SqSize)
+bool Clattice_List::CheckingNeighbors(BYTE **Pattern, int i, int j, int SqSize)
 {
 	// Check naightbouring block
 	if(i>0)
 	{
 		if (j>0)
 		{
-			if (Buffer[i-1][j-1] == 1)
+			if (Pattern[i-1][j-1] == 1)
 			{
 				return true;
 			}
 		}
 
-		if (Buffer[i-1][j]== 1)
+		if (Pattern[i-1][j]== 1)
 		{
 			return true;
 		}
 
 		if (j<SqSize-1)
 		{
-			if(Buffer[i-1][j+1] == 1)
+			if(Pattern[i-1][j+1] == 1)
 			{
 				return true;
 			}
@@ -437,14 +399,14 @@ bool CheckingNeighbors(BYTE **Buffer, int i, int j, int SqSize)
 
 	if (j>0)
 	{
-		if(Buffer[i][j-1] == 1)
+		if(Pattern[i][j-1] == 1)
 		{
 			return true;
 		}
 	}
 	if (j<SqSize-1)
 	{
-		if (Buffer[i][j+1] == 1)
+		if (Pattern[i][j+1] == 1)
 		{
 			return true;
 		}
@@ -454,19 +416,18 @@ bool CheckingNeighbors(BYTE **Buffer, int i, int j, int SqSize)
 	{
 		if (j>0)
 		{
-			if (Buffer[i+1][j-1] == 1)
+			if (Pattern[i+1][j-1] == 1)
 			{
 				return true;
 			}
-
 		}
-		if (Buffer[i+1][j] == 1)
+		if (Pattern[i+1][j] == 1)
 		{
 			return true;
 		}
 		if (j<SqSize-1)
 		{
-			if (Buffer[i+1][j+1] == 1)
+			if (Pattern[i+1][j+1] == 1)
 			{
 				return true;
 			}
@@ -476,8 +437,11 @@ bool CheckingNeighbors(BYTE **Buffer, int i, int j, int SqSize)
 }
 
 
-Lattice_LL* Lattice_Create(BYTE **Lattice, int SqSize) {
-	Lattice_LL *head = (Lattice_LL*)malloc(sizeof(Lattice_LL));
+LattPtr Clattice_List::Lattice_Create(BYTE **NewPatt, int SqSize) {
+
+	
+//	LattPtr head = (LattPtr)malloc(sizeof(Lattice_LL));
+	LattPtr head = new Lattice_LL;
 	int size_h, size_v;
 	if (head == NULL) 
 	{
@@ -488,17 +452,16 @@ Lattice_LL* Lattice_Create(BYTE **Lattice, int SqSize) {
 	{
 		head->next = NULL;
 		head->SqSize = SqSize;
-		head->Lattice = Lattice;
+		head->Pattern = NewPatt;
 		// Calculate Size_h, Size_v
-		CalculateSize(Lattice, SqSize, &size_h, &size_v);
+		CalculateSize(NewPatt, SqSize, &size_h, &size_v);
 		head->Size_h = size_h;
 		head->Size_v = size_v;
-
 		return head;
 	}
 }
 
-int  Lattice_Add(Lattice_LL *head, int SqSize, BYTE **Lattice) {
+int  Clattice_List::Lattice_Add(LattPtr head, BYTE **NewPatt) {
 	int size_h, size_v;
 
 	if (head == NULL)
@@ -506,76 +469,70 @@ int  Lattice_Add(Lattice_LL *head, int SqSize, BYTE **Lattice) {
 		exit(-1);
 	}
 
-	Lattice_LL *NewNode = (Lattice_LL*)malloc(sizeof(Lattice_LL));
+//	LattPtr NewNode = (LattPtr)malloc(sizeof(Lattice_LL));
+	LattPtr NewNode = new Lattice_LL;
 	if (NewNode == NULL) 
 	{
-		printf("can't allocate memory!\n");
+		cout << "can't allocate memory!" << endl;
 		return -1;
 	}
 	
 	NewNode->next = NULL;
-	NewNode->SqSize = SqSize;
-	NewNode->Lattice = Lattice;
+	NewNode->SqSize = head->SqSize;
+	NewNode->Pattern = NewPatt;
 	// Calculate Size_h, Size_v
-	CalculateSize(Lattice, SqSize, &size_h, &size_v);
+	CalculateSize(NewPatt, head->SqSize, &size_h, &size_v);
 	NewNode->Size_h = size_h;
 	NewNode->Size_v = size_v;
-#if 0	
-	Lattice_LL * temp;
-	temp = head;
-	while (temp->next !=NULL)
-	{
-		temp = temp->next;
-	}
-	temp->next = NewNode;
-#else  // This also works - So it does not change the head when the function exits.
+
 	while (head->next !=NULL)
 	{
 		head = head->next;
 	}
 	head->next = NewNode; 
-#endif
 	return 0;
 }
 
-BYTE** Memory2D(int SqSize)
+BYTE** Clattice_List::Memory2D(int SqSize)
 {
 	BYTE **Temp;
-	Temp = (BYTE **)malloc(sizeof(BYTE *)*SqSize);
+//	Temp = (BYTE **)malloc(sizeof(BYTE *)*SqSize);
+	Temp = new BYTE *[SqSize];
 	if (Temp == NULL)
 	{
-		printf("Memory allocation error!\n");
+		cout << "Memory allocation error!" << endl;
 		exit(1);
 	}
 	for (int i=0; i<SqSize; i++)
 	{
-		Temp[i] = (BYTE *)malloc(sizeof(BYTE)*SqSize);
+//		Temp[i] = (BYTE *)malloc(sizeof(BYTE)*SqSize);
+		Temp[i] = new BYTE [SqSize];
 		if (Temp[i] == NULL)
 		{
-			printf("Memory allocation error!\n");
+			cout << "Memory allocation error!" << endl;
 			exit(1);
 		}
 	}
 	return Temp;
 }
 
-void Lattice_Delete(Lattice_LL *Lattice, int SqSize)
+void Clattice_List::Lattice_Delete(LattPtr Lattice)
 {
-	Lattice_LL *tmp1, *tmp;
-	tmp = Lattice;
+	LattPtr tmp;
 
-	while (NULL != tmp)
+	while (NULL != Lattice)
 	{
-		for (int i=0;i<SqSize; i++)
-			free(tmp->Lattice[i]);
-		free(tmp->Lattice);
-		tmp1 = tmp->next;
-		free(tmp);
-		tmp = tmp1;
+		for (int i=0;i<Lattice->SqSize; i++)
+			delete Lattice->Pattern[i];
+		delete Lattice->Pattern;
+
+		tmp = Lattice->next;
+		delete Lattice;
+		Lattice = tmp;
 	}
 }
 
-void Lattice_Copy(Lattice_LL **Lattice_o, Lattice_LL *Lattice_n,  int SqSize) // Size is new size
+void Clattice_List::Lattice_Copy(LattPtr *Lattice_o, LattPtr Lattice_n) // Size is new size
 {
 
 	BYTE **NewLattice;
@@ -587,27 +544,26 @@ void Lattice_Copy(Lattice_LL **Lattice_o, Lattice_LL *Lattice_n,  int SqSize) //
 
 	while (NULL != Lattice_n)
 	{
+		NewLattice = Memory2D(Lattice_n->SqSize);
 
-		NewLattice = Memory2D(SqSize);
-
-		for (int i=0; i<SqSize; i++)
+		for (int i=0; i<Lattice_n->SqSize; i++)
 		{
-			memcpy(NewLattice[i], Lattice_n->Lattice[i], sizeof(BYTE)*SqSize);
+			memcpy(NewLattice[i], Lattice_n->Pattern[i], sizeof(BYTE)*Lattice_n->SqSize);
 		}
 
 		if (NULL == *Lattice_o)
 		{
-			*Lattice_o = Lattice_Create(NewLattice,SqSize);
+			*Lattice_o = Lattice_Create(NewLattice,Lattice_n->SqSize);
 		}
 		else
 		{
-			Lattice_Add(*Lattice_o, SqSize, NewLattice);
+			Lattice_Add(*Lattice_o, NewLattice);
 		}
 		Lattice_n = Lattice_n->next;
 	}
 }
 
-void CalculateSize(BYTE **Lattice, int SqSize, int *size_h, int *size_v)
+void Clattice_List::CalculateSize(BYTE **Lattice, int SqSize, int *size_h, int *size_v)
 {
 	*size_h = 0;
 	*size_v = 0;
@@ -626,11 +582,11 @@ void CalculateSize(BYTE **Lattice, int SqSize, int *size_h, int *size_v)
 	*size_v += 1;
 };
 
-bool LatticeCompare(BYTE **Pattern, int size_h1, int size_v1, BYTE **NewPat,  int SqSize) // false = not equal; true = equal
+bool Clattice_List::IsPatternInList(BYTE **Lattice, int size_h1, int size_v1, BYTE **NewLatt,  int SqSize) // false = not equal; true = equal
 {
 	int i, size_h2, size_v2;
 
-	CalculateSize(NewPat, SqSize, &size_h2, &size_v2);
+	CalculateSize(NewLatt, SqSize, &size_h2, &size_v2);
 
 	//Check if the size are the same, including rotation
 	if (!( ((size_h1 == size_h2) && (size_v1 == size_v2))			// Same size
@@ -638,12 +594,12 @@ bool LatticeCompare(BYTE **Pattern, int size_h1, int size_v1, BYTE **NewPat,  in
 	{
 		return false;  // not same
 	}
-#if 1
+
 	if (size_h1 == size_h2) // original
 	{
 		for (i=0; i<4; i++)
 		{
-			if (SamePatten(Pattern, NewPat, size_h1, size_v1, i))
+			if (IsSamePattern(Lattice, NewLatt, size_h1, size_v1, i))
 			{
 				return true;
 			}
@@ -652,7 +608,7 @@ bool LatticeCompare(BYTE **Pattern, int size_h1, int size_v1, BYTE **NewPat,  in
 		{
 			for (i=4; i<8; i++)
 			{
-				if (SamePatten(Pattern, NewPat, size_h1, size_v1, i))
+				if (IsSamePattern(Lattice, NewLatt, size_h1, size_v1, i))
 				{
 					return true;
 				}
@@ -663,49 +619,26 @@ bool LatticeCompare(BYTE **Pattern, int size_h1, int size_v1, BYTE **NewPat,  in
 	{
 		for (i=4; i<8; i++)
 		{
-			if (SamePatten(Pattern, NewPat, size_h1, size_v1, i)) // check rotation
+			if (IsSamePattern(Lattice, NewLatt, size_h1, size_v1, i)) // check rotation
 			{
 				return true;
 			}
 		}
 	}
-#else
-	if (size_h1 == size_h2) // original
-	{
-		for (i=0; i<4; i++)
-		{
-			if (SamePatten(Pattern, NewPat, size_h1, size_v1, i))
-			{
-				return true;
-			}
-		}
-
-	}
-	else // rotate90, rotate270
-	{
-		for (i=4; i<8; i++)
-		{
-			if (SamePatten(Pattern, NewPat, size_h1, size_v1, i))
-			{
-				return true;
-			}
-		}
-	}
-#endif
 	return (false);
 }
 
 
-bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int MirroRotate)
+bool Clattice_List::IsSamePattern(BYTE **Lattice, BYTE **NewLatt, int size_h, int size_v, int MirroRotate)
 {
-	// Size is Lattice Pattern Size
+	// Size is Lattice Lattice Size
 	switch (MirroRotate)
 	{
 		case 0:
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[i][j])
+					if (Lattice[i][j] != NewLatt[i][j])
 						return false;
 				}
 			return true;
@@ -713,7 +646,7 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[i][size_h-1-j])
+					if (Lattice[i][j] != NewLatt[i][size_h-1-j])
 						return false;
 				}
 			return true;
@@ -721,7 +654,7 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[size_v-1-i][j])
+					if (Lattice[i][j] != NewLatt[size_v-1-i][j])
 						return false;
 				}
 			return true;
@@ -729,7 +662,7 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[size_v-1-i][size_h-1-j])
+					if (Lattice[i][j] != NewLatt[size_v-1-i][size_h-1-j])
 						return false;
 				}
 			return true;
@@ -737,7 +670,7 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[j][i])
+					if (Lattice[i][j] != NewLatt[j][i])
 						return false;
 				}
 			return true;
@@ -745,7 +678,7 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[size_h-1-j][i])
+					if (Lattice[i][j] != NewLatt[size_h-1-j][i])
 						return false;
 				}
 			return true;
@@ -753,7 +686,7 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[j][size_v-1-i])
+					if (Lattice[i][j] != NewLatt[j][size_v-1-i])
 						return false;
 				}
 			return true;
@@ -761,14 +694,16 @@ bool SamePatten(BYTE **Pattern, BYTE **NewPat, int size_h, int size_v, int Mirro
 			for (int i=0; i<size_v; i++)
 				for (int j=0; j<size_h; j++)
 				{
-					if (Pattern[i][j] != NewPat[size_h-1-j][size_v-1-i])
+					if (Lattice[i][j] != NewLatt[size_h-1-j][size_v-1-i])
 						return false;
 				}
 			return true;
+		default:
+			return false;
 	}
 };
 
-void Move2TopLeft(BYTE **Lattice, int SqSize)
+void Clattice_List::Move2TopLeft(BYTE **Lattice, int SqSize)
 {
 	int Left, Top, i ,j;
 	Left = 1;
@@ -801,7 +736,6 @@ void Move2TopLeft(BYTE **Lattice, int SqSize)
 			}
 			Lattice[i][SqSize-1] = 0;
 		}
-
 	}
 
 	if (Top == 1)
